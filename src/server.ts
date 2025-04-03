@@ -6,6 +6,7 @@ import 'dotenv/config';
 import morgan from 'morgan';
 import databaseConfiguration from './config/dbConfig/databaseConfig.mongodb';
 import authRoute from './controller/auth/auth.controller';
+import productRoute from './controller/product/product.controller';
 import notFound from './handler/notNotFound/notNotFound.middleware';
 import errorHandlerMiddleware from './handler/errorHandler/errorhandler.middleware';
 const app: Application = express();
@@ -25,6 +26,7 @@ if (process.env.NODE_ENV as string === 'development') {
     console.log(morgan('dev'))
 }
 app.use(`/api/${API_VERSION}/auth`, authRoute);
+app.use(`/api/${API_VERSION}/product`, productRoute);
 app.use(notFound);
 app.use(errorHandlerMiddleware);
 async function startWebServer() {
