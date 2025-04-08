@@ -2,10 +2,12 @@ import express from 'express';
 import { createProduct, fetchProducts, fetchProduct, updateProduct, removeProduct, searchProduct } from '../../service/product/product.service';
 import { authToken } from '../../middleware/auth/authToken.middleware';
 import schemaValidator from '../../utils/validator/schemaValidator';
+import { uploadProductImages } from '../../service/product/product.service';
 const router = express.Router();
 router.post('/create-product',
     authToken,
     schemaValidator('/product/create-product'),
+    uploadProductImages,
     createProduct
 );
 router.get('/fetch-products',

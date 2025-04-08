@@ -7,6 +7,7 @@ import morgan from 'morgan';
 import databaseConfiguration from './config/dbConfig/databaseConfig.mongodb';
 import authRoute from './controller/auth/auth.controller';
 import productRoute from './controller/product/product.controller';
+import paymentRoute from './controller/payment/payment.controller';
 import notFound from './handler/notNotFound/notNotFound.middleware';
 import errorHandlerMiddleware from './handler/errorHandler/errorhandler.middleware';
 const app: Application = express();
@@ -27,16 +28,17 @@ if (process.env.NODE_ENV as string === 'development') {
 }
 app.use(`/api/${API_VERSION}/auth`, authRoute);
 app.use(`/api/${API_VERSION}/product`, productRoute);
+app.use(`/api/${API_VERSION}/stripe`, paymentRoute);
 app.use(notFound);
 app.use(errorHandlerMiddleware);
 async function startWebServer() {
     try {
         await databaseConfiguration(),
         app.listen(PORT, function() {
-            console.log(`Server is running ${APP_HOST} on port ${PORT} on /api ${API_VERSION}`)
+            console.log(`Server is running ${APP_HOST} on port ${PORT} on /api/${API_VERSION}/`)
         })
     } catch (error) {
-        console.log("Soemthing went wrong")
+        console.log("Something went wrong")
     }
 }
 startWebServer();

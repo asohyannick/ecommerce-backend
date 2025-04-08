@@ -2,13 +2,21 @@ import Product from "../../dto/product/product.model";
 import { qualityStatus } from "../../interfac/product/product.interfac";
 import { Request, Response } from "express";
 import { ParsedQs } from 'qs';
+import multer from "multer";
+import cloudinary from "../../config/cloudinaryConfig/cloudinaryConfig";
+import compressImage from "../../utils/compressionImages/compressImage";
 import { StatusCodes } from "http-status-codes";
+const storage = multer.memoryStorage(); // Store the files in memory
+const upload = multer({storage: storage});
+const uploadImages = upload.array('imageURLs', 20);
+interface CloudinaryUploadResponse {
+    secure_url: string
+}
 const createProduct = async(req: Request, res: Response) : Promise<Response> => {
     const {
         name,
         price,
         description,
-        imageURLs,
         quantity,
         tags,
         country,
@@ -19,11 +27,27 @@ const createProduct = async(req: Request, res: Response) : Promise<Response> => 
         duration,
     } = req.body;
     try {
+        const files = req.file as Express.Multer.File[] | undefined;
+        if (!files || files.length === 0) {
+            return res.status(StatusCodes.NOT_FOUND).json({message: "No images have been provided."})
+        }
+        const uploadedImageURLs: string[] = []; 
+        for (const file of files) {
+            const compressedImage = await compressImage(file.buffer);
+            const result = await new Promise<CloudinaryUploadResponse>((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream((error, result) => {
+                if (error) reject(error);
+                else resolve(result as CloudinaryUploadResponse);
+            });
+            stream.end(compressedImage); 
+            });
+            uploadedImageURLs.push(result.secure_url);
+        }
         const newProduct = new Product({
             name,
             price,
             description,
-            imageURLs,
+            imageURLs: uploadedImageURLs,
             quantity,
             tags,
             country,
@@ -41,10 +65,31 @@ const createProduct = async(req: Request, res: Response) : Promise<Response> => 
             message: "Product has been created successfully",
             newProduct
         });
-    } catch (error) {
-        console.error(error);
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({message: "Some thing went wrong ", error: error.message});
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+              console.error(error);
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                message: "Some thing went wrong ",
+                error:  error.message
+            });
+        } else {
+            console.error(error);
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                message: "Some thing went wrong ",
+                error:  "An unexpected error occured"
+            });
+        }
     }
+};
+const uploadProductImages = (req: Request, res: Response, next: () => void) => {
+    uploadImages(req, res, (err) => {
+        console.error("Upload Error:", err);
+        if (err) {
+            return res.status(StatusCodes.BAD_REQUEST).json({ message: "Image upload failed", error: err });
+        }
+        console.log('Uploaded files:', req.files); // Check the uploaded files
+        next();
+    });
 };
 const fetchProducts = async(req: Request, res: Response) : Promise<Response> => {
     try {
@@ -192,6 +237,7 @@ const searchProduct = async(req: Request<{}, {}, {}, ParsedQs>, res: Response) :
 
 export {
     createProduct,
+    uploadProductImages,
     fetchProducts,
     fetchProduct,
     updateProduct,
